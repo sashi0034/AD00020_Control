@@ -38,14 +38,16 @@
 
             <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center">
                 <Button x:Name="PowerOnButton" Content="ON" Width="80" Height="32" Margin="2 0" FontSize="14"
-                         Click="PowerOnButton_OnClick"/>
-                <Button Content="OFF" Width="80" Height="32" Margin="2 0" FontSize="14" />
+                        Click="PowerOnButton_OnClick" />
+                <Button x:Name="PowerOffButton" Content="OFF" Width="80" Height="32" Margin="2 0" FontSize="14"
+                        Click="PowerOffButton_OnClick" />
             </StackPanel>
 
             <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                <Button x:Name="PowerOffButton" Content="Open settings.json" Width="Auto" Height="32" Margin="2 0"
-                        FontSize="14" />
-                <Button Content="Reload settings.json" Width="Auto" Height="32" Margin="2 0" FontSize="14" />
+                <Button x:Name="OpenSettingsButton"  Content="Open settings.json" Width="Auto" Height="32" Margin="2 0"
+                        FontSize="14" Click="OpenSettingsButton_OnClick" />
+                <Button  x:Name="ReloadSettingsButton" Content="Reload settings.json" Width="Auto" Height="32" Margin="2 0" FontSize="14"
+                          Click="ReloadSettingsButton_OnClick"/>
             </StackPanel>
         </Grid>
 

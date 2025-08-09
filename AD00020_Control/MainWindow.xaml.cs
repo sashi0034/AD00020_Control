@@ -150,7 +150,7 @@ namespace AD00020_Control
             }
         }
 
-        private void PowerOnButton_OnClick(object sender, RoutedEventArgs e)
+        private void requestCommand(string commandName)
         {
             ensureDeviceHandle();
 
@@ -160,7 +160,7 @@ namespace AD00020_Control
                 return;
             }
 
-            if (_settingsObject.CommandMap.TryGetValue("power_on", out var command) == false)
+            if (_settingsObject.CommandMap.TryGetValue(commandName, out var command) == false)
             {
                 MessageBox.Show("Power On command not found in settings.", "Error", MessageBoxButton.OK,
                     MessageBoxImage.Error);
@@ -197,6 +197,57 @@ namespace AD00020_Control
             }
 
             Dispatcher.Invoke(() => { appendLogMessage($"ℹ️ Command succeeded: {command.Comment}"); });
+        }
+
+        private void PowerOnButton_OnClick(object sender, RoutedEventArgs e)
+        {
+            requestCommand("power_on");
+        }
+
+        private void PowerOffButton_OnClick(object sender, RoutedEventArgs e)
+        {
+            requestCommand("power_off");
+        }
+
+        private void OpenSettingsButton_OnClick(object sender, RoutedEventArgs e)
+        {
+            // エクスプローラーで設定ファイルを開く
+            try
+            {
+                string settingsDir = Path.GetDirectoryName(settingPath) ?? string.Empty;
+                if (Directory.Exists(settingsDir))
+                {
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = settingsDir,
+                        UseShellExecute = true,
+                        Verb = "open"
+                    });
+                }
+                else
+                {
+                    MessageBox.Show("Settings directory does not exist.", "Error", MessageBoxButton.OK,
+                        MessageBoxImage.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Failed to open settings directory: {ex.Message}", "Error", MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+        }
+
+        private void ReloadSettingsButton_OnClick(object sender, RoutedEventArgs e)
+        {
+            // 設定を再読み込み
+            if (loadSettings())
+            {
+                appendLogMessage("Settings reloaded successfully.");
+            }
+            else
+            {
+                appendLogMessage("Failed to reload settings.");
+            }
         }
     }
 }
