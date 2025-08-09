@@ -1,0 +1,5 @@
+LIBRARY	"USB_IR_Library"
+EXPORTS	openUSBIR		@1
+EXPORTS	closeUSBIR		@2
+EXPORTS	writeUSBIR		@3
+EXPORTS	writeUSBIRex	@4

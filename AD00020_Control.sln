@@ -5,6 +5,8 @@ VisualStudioVersion = 17.14.36109.1 d17.14
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AD00020_Control", "AD00020_Control\AD00020_Control.csproj", "{8060D908-0278-48BC-975F-D537BC4929B7}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "USB_IR_Library", "USB_IR_Library\USB_IR_Library.vcxproj", "{3A350E23-6CF4-4384-85D8-A673EE592B9C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
