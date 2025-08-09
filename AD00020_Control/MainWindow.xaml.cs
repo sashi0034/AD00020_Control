@@ -20,6 +20,8 @@ namespace AD00020_Control
 
         private SettingsObject _settingsObject = new SettingsObject();
 
+        private CancellationTokenSource _sendCancellation = new CancellationTokenSource();
+
         public MainWindow()
         {
             InitializeComponent();
@@ -35,6 +37,8 @@ namespace AD00020_Control
 
         ~MainWindow()
         {
+            _sendCancellation.Cancel();
+
             if (_deviceHandle != null && !_deviceHandle.IsInvalid)
             {
                 USBIR.closeUSBIR(_deviceHandle);
@@ -163,6 +167,18 @@ namespace AD00020_Control
                 return;
             }
 
+            _sendCancellation.Cancel();
+            _sendCancellation = new CancellationTokenSource();
+            sendCommandAsync(command, _sendCancellation.Token).RunErrorHandler();
+        }
+
+        private async Task sendCommandAsync(CommandData command, CancellationToken cancellationToken)
+        {
+            await using var cancelRegister = cancellationToken.Register(() =>
+            {
+                Dispatcher.Invoke(() => { appendLogMessage($"⚠️ Command cancelled: {command.Comment}"); });
+            });
+
             foreach (var bytes in command.Bytes)
             {
                 HelperFunctions.ParseHexString(bytes, out byte[] byteCode, out int byteLength);
@@ -170,17 +186,17 @@ namespace AD00020_Control
                 // USB DEVICE へ送信
                 if (USBIR.writeUSBIR_Direct(_deviceHandle, byteCode, byteLength) != 0)
                 {
-                    appendLogMessage($"❌ Failed to send: {bytes}");
+                    Dispatcher.Invoke(() => { appendLogMessage($"❌ Failed to send: {bytes}"); });
                 }
                 else
                 {
-                    appendLogMessage($"✅ Sent: {bytes}");
+                    Dispatcher.Invoke(() => { appendLogMessage($"✅ Sent: {bytes}"); });
                 }
 
-                Task.Delay(1000).Wait();
+                await Task.Delay(1000, cancellationToken);
             }
 
-            appendLogMessage($"ℹ️ Command succeeded: {command.Comment}");
+            Dispatcher.Invoke(() => { appendLogMessage($"ℹ️ Command succeeded: {command.Comment}"); });
         }
     }
 }
