@@ -1,6 +1,8 @@
 ﻿using System.IO;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Windows;
+using System.Windows.Input;
 using System.Windows.Interop;
 using Microsoft.Win32.SafeHandles;
 using ModernWpf;
@@ -26,6 +28,8 @@ namespace AD00020_Control
         private CancellationTokenSource _jobCancellation = new CancellationTokenSource();
         private int _previousJobTimestampHour = 0;
 
+        private CancellationTokenSource _commandCancellation = new CancellationTokenSource();
+
         public MainWindow()
         {
             InitializeComponent();
@@ -35,6 +39,8 @@ namespace AD00020_Control
                 Application.Current.Shutdown();
                 return;
             }
+
+            showHelp();
 
             ensureDeviceHandle();
 
@@ -99,6 +105,13 @@ namespace AD00020_Control
 
             _logMessages.Add($"[{DateTime.Now:MM/dd HH:mm:ss}] {message}");
             LoggerText.Text = string.Join(Environment.NewLine, _logMessages);
+        }
+
+        private void showHelp()
+        {
+            appendLogMessage(
+                "🔰 Built-in commands:\n" +
+                "wait ➡️ Wait for the specified minutes. Example: `wait180 power_off`\n");
         }
 
         private void ensureDeviceHandle()
@@ -325,6 +338,101 @@ namespace AD00020_Control
 
                 await Task.Delay(TimeSpan.FromMinutes(5), cancellationToken);
             }
+        }
+
+        private void CommandInput_OnKeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter)
+            {
+                e.Handled = true; // Enterキーのデフォルト動作を無効化
+
+                executeCommand();
+            }
+        }
+
+        private void CommandExecuteButton_OnClick(object sender, RoutedEventArgs e)
+        {
+            executeCommand();
+        }
+
+        private void executeCommand()
+        {
+            string commandInput = CommandInput.Text.Trim();
+            if (string.IsNullOrEmpty(commandInput))
+            {
+                return;
+            }
+
+            appendLogMessage($"Executing command: {commandInput}");
+            CommandInput.Clear();
+
+            var commandList = commandInput.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            executeCommandInternal(commandList, _commandCancellation.Token).RunErrorHandler();
+        }
+
+        private async Task executeCommandInternal(string[] commandList, CancellationToken cancellationToken)
+        {
+            int currentIndex = 0;
+            await using var cancelRegister = cancellationToken.Register(() =>
+            {
+                Dispatcher.Invoke(() =>
+                {
+                    appendLogMessage(
+                        $"⚠️ Command execution cancelled: {commandList[currentIndex]}\nSource: {string.Join(", ", commandList)}");
+                });
+            });
+
+            for (currentIndex = 0; currentIndex < commandList.Length; currentIndex++)
+            {
+                string command = commandList[currentIndex];
+
+                Dispatcher.Invoke(() => { appendLogMessage($"Next command: {command}"); });
+
+                await Task.Delay(1000, cancellationToken);
+
+                if (await handleBuiltinCommand(command, cancellationToken))
+                {
+                    continue; // Built-in command handled, skip to next
+                }
+
+                if (_settingsObject.CommandMap.TryGetValue(command, out var commandData))
+                {
+                    await sendCommandAsync(commandData, cancellationToken);
+                }
+                else
+                {
+                    Dispatcher.Invoke(() => { appendLogMessage($"❌ Command '{command}' not found in settings."); });
+                }
+            }
+
+            Dispatcher.Invoke(() => { appendLogMessage("ℹ️ Command execution completed"); });
+        }
+
+        private async Task<bool> handleBuiltinCommand(string command, CancellationToken cancellationToken)
+        {
+            var afterMatch = Regex.Match(command, @"^wait(\d+)$");
+            if (afterMatch.Success)
+            {
+                if (int.TryParse(afterMatch.Groups[1].Value, out int waitTime))
+                {
+                    Dispatcher.Invoke(() => { appendLogMessage($"⏳ Waiting for {waitTime} minutes..."); });
+                    await Task.Delay(waitTime * 60 * 1000, cancellationToken);
+                }
+                else
+                {
+                    Dispatcher.Invoke(() => { appendLogMessage($"❌ Invalid 'wait' command: {command}"); });
+                }
+
+                return true;
+            }
+
+            return false;
+        }
+
+        private void CommandCancelButton_OnClick(object sender, RoutedEventArgs e)
+        {
+            _commandCancellation.Cancel();
+            _commandCancellation = new CancellationTokenSource();
         }
     }
 }
