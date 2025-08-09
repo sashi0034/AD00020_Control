@@ -277,6 +277,12 @@ namespace AD00020_Control
 
         private async Task runJobAsync(CancellationToken cancellationToken)
         {
+            Dispatcher.Invoke(() => { appendLogMessage($"ℹ️ Job started"); });
+            using var cancelRegister = cancellationToken.Register(() =>
+            {
+                Dispatcher.Invoke(() => { appendLogMessage("⚠️ Job cancelled"); });
+            });
+
             _previousJobTimestampHour = -1;
 
             while (!cancellationToken.IsCancellationRequested)
@@ -294,7 +300,7 @@ namespace AD00020_Control
                         {
                             if (job.Hour == currentHour)
                             {
-                                appendLogMessage($"Executing job: {job.Command}");
+                                Dispatcher.Invoke(() => { appendLogMessage($"Executing job: {job.Command}"); });
 
                                 // コマンドを実行
                                 if (_settingsObject.CommandMap.TryGetValue(job.Command, out var command))
@@ -303,7 +309,10 @@ namespace AD00020_Control
                                 }
                                 else
                                 {
-                                    appendLogMessage($"❌ Command '{job.Command}' not found in settings.");
+                                    Dispatcher.Invoke(() =>
+                                    {
+                                        appendLogMessage($"❌ Command '{job.Command}' not found in settings.");
+                                    });
                                 }
                             }
                         }
@@ -311,7 +320,7 @@ namespace AD00020_Control
                 }
                 catch (Exception ex)
                 {
-                    appendLogMessage($"Error in job execution: {ex.Message}");
+                    Dispatcher.Invoke(() => { appendLogMessage($"Error in job execution: {ex.Message}"); });
                 }
 
                 await Task.Delay(TimeSpan.FromMinutes(5), cancellationToken);
