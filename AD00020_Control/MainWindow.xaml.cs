@@ -18,6 +18,8 @@ namespace AD00020_Control
 
         private List<string> _logMessages = new List<string>();
 
+        private SettingsObject _settingsObject = new SettingsObject();
+
         public MainWindow()
         {
             InitializeComponent();
@@ -29,6 +31,15 @@ namespace AD00020_Control
             }
 
             ensureDeviceHandle();
+        }
+
+        ~MainWindow()
+        {
+            if (_deviceHandle != null && !_deviceHandle.IsInvalid)
+            {
+                USBIR.closeUSBIR(_deviceHandle);
+                _deviceHandle.Dispose();
+            }
         }
 
         private bool loadSettings()
@@ -48,8 +59,16 @@ namespace AD00020_Control
                     PropertyNameCaseInsensitive = true,
                 };
 
-                var root = JsonSerializer.Deserialize<SettingsObject>(json, options);
-                root.InitializeCommandMap();
+                var deserialized = JsonSerializer.Deserialize<SettingsObject>(json, options);
+                if (deserialized == null)
+                {
+                    MessageBox.Show("Failed to deserialize settings.", "Error", MessageBoxButton.OK,
+                        MessageBoxImage.Error);
+                    return false;
+                }
+
+                _settingsObject = deserialized;
+                _settingsObject.InitializeCommandMap();
             }
             catch (Exception ex)
             {
@@ -125,6 +144,43 @@ namespace AD00020_Control
                     i_ret = USBIR.closeUSBIR(deviceHandle);
                 }
             }
+        }
+
+        private void PowerOnButton_OnClick(object sender, RoutedEventArgs e)
+        {
+            ensureDeviceHandle();
+
+            if (_deviceHandle == null || _deviceHandle.IsInvalid)
+            {
+                MessageBox.Show("USB DEVICE is not connected.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
+            if (_settingsObject.CommandMap.TryGetValue("power_on", out var command) == false)
+            {
+                MessageBox.Show("Power On command not found in settings.", "Error", MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+                return;
+            }
+
+            foreach (var bytes in command.Bytes)
+            {
+                HelperFunctions.ParseHexString(bytes, out byte[] byteCode, out int byteLength);
+
+                // USB DEVICE へ送信
+                if (USBIR.writeUSBIR_Direct(_deviceHandle, byteCode, byteLength) != 0)
+                {
+                    appendLogMessage($"❌ Failed to send: {bytes}");
+                }
+                else
+                {
+                    appendLogMessage($"✅ Sent: {bytes}");
+                }
+
+                Task.Delay(1000).Wait();
+            }
+
+            appendLogMessage($"ℹ️ Command succeeded: {command.Comment}");
         }
     }
 }

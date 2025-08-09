@@ -7,14 +7,14 @@ namespace AD00020_Control;
 
 public class SettingsObject
 {
-    [JsonPropertyName("job")] public List<JobEntry> Job { get; set; }
+    [JsonPropertyName("job")] public List<JobEntry> Job { get; set; } = new();
 
-    // コマンド名（"switch_on"など）をキーにして
+    // コマンド名（"power_on"など）をキーにして
     // bytes と comment を持つオブジェクトを格納する辞書
-    [JsonExtensionData] public Dictionary<string, JsonElement> ExtensionData { get; set; }
+    [JsonExtensionData] public Dictionary<string, JsonElement> ExtensionData { get; set; } = new();
 
     // コマンド辞書（bytesとcommentをパースして格納）
-    [JsonIgnore] public Dictionary<string, CommandData> CommandMap { get; private set; }
+    [JsonIgnore] public Dictionary<string, CommandData> CommandMap { get; private set; } = new();
 
     public void InitializeCommandMap()
     {
