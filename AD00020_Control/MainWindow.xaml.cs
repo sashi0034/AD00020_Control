@@ -16,11 +16,15 @@ namespace AD00020_Control
 
         private SafeFileHandle? _deviceHandle = null;
 
-        private List<string> _logMessages = new List<string>();
+        private readonly List<string> _logMessages = new List<string>();
 
         private SettingsObject _settingsObject = new SettingsObject();
 
         private CancellationTokenSource _sendCancellation = new CancellationTokenSource();
+
+        private bool _jobRunning = false;
+        private CancellationTokenSource _jobCancellation = new CancellationTokenSource();
+        private int _previousJobTimestampHour = 0;
 
         public MainWindow()
         {
@@ -33,6 +37,8 @@ namespace AD00020_Control
             }
 
             ensureDeviceHandle();
+
+            requestJobToggle(false);
         }
 
         ~MainWindow()
@@ -247,6 +253,68 @@ namespace AD00020_Control
             else
             {
                 appendLogMessage("Failed to reload settings.");
+            }
+        }
+
+        private void JobToggleButton_OnClick(object sender, RoutedEventArgs e)
+        {
+            requestJobToggle(!_jobRunning);
+        }
+
+        private void requestJobToggle(bool shouldRun)
+        {
+            _jobRunning = shouldRun;
+
+            JobToggleButton.Content = shouldRun ? "⏹️ Stop Job" : "▶️ Start Job";
+
+            _jobCancellation.Cancel();
+            _jobCancellation = new CancellationTokenSource();
+            if (shouldRun)
+            {
+                runJobAsync(_jobCancellation.Token).RunErrorHandler();
+            }
+        }
+
+        private async Task runJobAsync(CancellationToken cancellationToken)
+        {
+            _previousJobTimestampHour = -1;
+
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                try
+                {
+                    DateTime now = DateTime.Now;
+                    int currentHour = now.Hour;
+
+                    // 前回の実行時刻と異なる場合のみ実行
+                    if (currentHour != _previousJobTimestampHour)
+                    {
+                        _previousJobTimestampHour = currentHour;
+                        foreach (var job in _settingsObject.Job)
+                        {
+                            if (job.Hour == currentHour)
+                            {
+                                appendLogMessage($"Executing job: {job.Command}");
+
+                                // コマンドを実行
+                                if (_settingsObject.CommandMap.TryGetValue(job.Command, out var command))
+                                {
+                                    await sendCommandAsync(command, cancellationToken);
+                                }
+                                else
+                                {
+                                    appendLogMessage($"❌ Command '{job.Command}' not found in settings.");
+                                }
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    appendLogMessage($"Error in job execution: {ex.Message}");
+                }
+
+                await Task.Delay(TimeSpan.FromMinutes(5), cancellationToken);
             }
         }
     }

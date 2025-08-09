@@ -52,7 +52,7 @@ public class CommandData
 
 public class JobEntry
 {
-    [JsonPropertyName("hh")] public string Hour { get; set; }
+    [JsonPropertyName("hour")] public int Hour { get; set; }
 
     [JsonPropertyName("command")] public string Command { get; set; }
 }
