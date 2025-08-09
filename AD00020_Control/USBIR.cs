@@ -250,6 +250,54 @@ public class USBIR
         return num1;
     }
 
+    // ----------------------------------------------- modification by sashi0034
+
+    public static int writeUSBIR_Direct(
+        SafeFileHandle HandleToUSBDevice,
+        byte[] outData,
+        int outDataLength)
+    {
+        int result = -1;
+        byte[] outBuffer = new byte[65];
+        uint BytesWritten = 0;
+
+        try
+        {
+            if (HandleToUSBDevice != null && !HandleToUSBDevice.IsInvalid && outData != null)
+            {
+                outBuffer[0] = 0;
+                outBuffer[1] = 0x61;
+
+                // 指定長までコピー
+                int copyLength = Math.Min(outDataLength, 63);
+                for (int i = 0; i < copyLength; i++)
+                {
+                    outBuffer[i + 2] = outData[i];
+                }
+
+                // 残りは0xFFで埋める
+                for (int i = copyLength + 2; i < 65; i++)
+                {
+                    outBuffer[i] = 0xFF;
+                }
+
+                // 実際の送信
+                if (USBIR.WriteFile(HandleToUSBDevice, outBuffer, 65U, ref BytesWritten, IntPtr.Zero))
+                {
+                    result = 0;
+                }
+            }
+        }
+        catch
+        {
+            // trough
+        }
+
+        return result;
+    }
+
+    // ----------------------------------------------- end modification
+
     private static bool CheckIfPresentAndGetUSBDevicePath()
     {
         try
